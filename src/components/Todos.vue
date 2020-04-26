@@ -12,7 +12,7 @@
 			/>
 		</header>
 		<section class="main" v-if="todos.length">
-			<input id="toggle-all" type="checkbox" class="toggle-all" v-model="toggleCompleted" />
+			<input id="toggle-all" type="checkbox" class="toggle-all" v-model="allDone" />
 			<label for="toggle-all">Mark all as complete</label>
 			<ul class="todo-list">
 				<li class="todo" :class="editedTodo ? 'editing' : ''" v-for="todo in data" :key="todo.text">
@@ -131,6 +131,16 @@ export default {
 			} else {
 				return this.todos;
 			}
+		},
+		allDone: {
+			get() {
+				return this.nbTodos == 0;
+			},
+			set(value) {
+				this.todos.forEach((todo) => {
+					todo.completed = value;
+				});
+			},
 		},
 	},
 	directives: {
