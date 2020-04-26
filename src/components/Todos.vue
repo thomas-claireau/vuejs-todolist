@@ -88,7 +88,13 @@ export default {
 			this.editedTodo = todo;
 		},
 		doneEdit() {
-			this.editedTodo = null;
+			if (this.editedTodo && this.editedTodo.text == '') {
+				const todo = this.todos.filter((item) => item == this.editedTodo)[0];
+				this.deleteTodo(todo);
+				this.editedTodo = null;
+			} else {
+				this.editedTodo = null;
+			}
 		},
 		deleteTodo(todo) {
 			this.todos = this.todos.filter((item) => item != todo);
