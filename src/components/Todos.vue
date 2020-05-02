@@ -1,157 +1,182 @@
 <template>
-	<section class="todoapp">
-		<header class="header" data-children-count="1">
+	<div class="todoapp-container">
+		<header class="header">
+			<img src="../assets/logo.png" alt />
 			<h1>todos</h1>
-			<input
-				autofocus="autofocus"
-				autocomplete="off"
-				placeholder="What needs to be done?"
-				class="new-todo"
-				v-model="writeTodo"
-				@keypress.enter="addTodo()"
-			/>
 		</header>
-		<section class="main" v-if="todos.length">
-			<input id="toggle-all" type="checkbox" class="toggle-all" v-model="allDone" />
-			<label for="toggle-all">Mark all as complete</label>
-			<ul class="todo-list">
-				<li class="todo" :class="editedTodo ? 'editing' : ''" v-for="todo in data" :key="todo.text">
-					<div class="view">
-						<input type="checkbox" class="toggle" v-model="todo.completed" />
-						<label @dblclick="editTodo(todo)">{{todo.text}}</label>
-						<button class="destroy" @click="deleteTodo(todo)"></button>
-					</div>
-					<input
-						type="text"
-						class="edit"
-						v-todo-focus="todo == editedTodo"
-						v-model.lazy="todo.text"
-						@blur="doneEdit"
-						@keyup.esc="doneEdit"
-					/>
-				</li>
-			</ul>
+		<section class="todoapp">
+			<input
+				class="new-todo"
+				placeholder="What needs to be done ?"
+				v-model="newTodo"
+				@keyup.enter="addTodo()"
+			/>
+			<div class="main">
+				<input id="toggle-all" type="checkbox" class="toggle-all" v-model="allCompleted" />
+				<label for="toggle-all">Mark all as complete</label>
+				<ul class="todo-list">
+					<li
+						class="todo"
+						:class="{ completed: todo.completed, editing: editedTodo == todo }"
+						v-for="(todo, index) in filteredTodo"
+						:key="index"
+					>
+						<div class="view">
+							<input type="checkbox" class="toggle" v-model="todo.completed" />
+							<label @dblclick="editTodo(todo)">{{todo.title}}</label>
+							<button class="destroy" @click="deleteTodo(todo)"></button>
+						</div>
+						<input
+							type="text"
+							class="edit"
+							ref="edit"
+							v-model.lazy="todo.title"
+							@blur="doneEdit(todo)"
+							@keyup.enter="doneEdit(todo)"
+							@keyup.esc="cancelEdit(todo)"
+						/>
+					</li>
+				</ul>
+			</div>
+			<footer class="footer" v-show="todos.length > 0">
+				<span class="todo-count">
+					<strong>{{remaining}}</strong> items left
+				</span>
+				<ul class="filters">
+					<li>
+						<a href="#" :class="{ selected: visibility == 'all' }" @click="visibility = 'all'">All</a>
+					</li>
+					<li>
+						<a
+							href="#"
+							:class="{ selected: visibility == 'active' }"
+							@click="visibility = 'active'"
+						>Active</a>
+					</li>
+					<li>
+						<a
+							href="#"
+							:class="{ selected: visibility == 'completed' }"
+							@click="visibility = 'completed'"
+						>Completed</a>
+					</li>
+				</ul>
+				<button class="clear-completed" v-show="isCompleted" @click="clearCompleted()">Clear completed</button>
+			</footer>
 		</section>
-		<footer class="footer" v-if="todos.length">
-			<span class="todo-count">
-				<strong>{{ nbTodos }}</strong> items left
-			</span>
-			<ul class="filters">
-				<li>
-					<a href="#/all" :class="filtre == 'all' ? 'selected' : ''" @click="filteredTodo('all')">All</a>
-				</li>
-				<li>
-					<a
-						href="#/active"
-						:class="filtre == 'active' ? 'selected' : ''"
-						@click="filteredTodo('active')"
-					>Active</a>
-				</li>
-				<li>
-					<a
-						href="#/completed"
-						:class="filtre == 'completed' ? 'selected' : ''"
-						@click="filteredTodo('completed')"
-					>Completed</a>
-				</li>
-			</ul>
-			<button class="clear-completed" v-if="isCompleted" @click="clearCompleted()">Clear completed</button>
+		<footer class="info">
+			<p>Double-click to edit a todo</p>
+			<p>
+				Written by
+				<a href="http://evanyou.me">Evan You</a>
+			</p>
+			<p>
+				Part of
+				<a href="http://todomvc.com">TodoMVC</a>
+			</p>
 		</footer>
-	</section>
+	</div>
 </template>
 
 <script>
 import Vue from 'vue';
 
+const filters = {
+	all(todos) {
+		return todos;
+	},
+	active(todos) {
+		return todos.filter((item) => !item.completed);
+	},
+	completed(todos) {
+		return todos.filter((item) => item.completed);
+	},
+};
+
 export default {
 	data() {
 		return {
-			writeTodo: '',
 			todos: [],
-			filtre: 'all',
+			newTodo: '',
+			visibility: 'all',
 			editedTodo: null,
 		};
 	},
 	methods: {
 		addTodo() {
-			if (this.writeTodo == '' || this.isDuplicate()) return;
+			if (this.filteredTodo.filter((item) => item.title == this.newTodo).length > 0) return;
 
-			const todo = {
-				text: this.writeTodo,
-				completed: false,
-			};
+			if (this.newTodo !== '') {
+				this.todos.push({
+					completed: false,
+					title: this.newTodo,
+				});
+			}
 
-			this.todos.push(todo);
-			this.clearInput();
+			this.newTodo = '';
 		},
 		editTodo(todo) {
 			this.editedTodo = todo;
-		},
-		doneEdit() {
-			if (this.editedTodo && this.editedTodo.text == '') {
-				const todo = this.todos.filter((item) => item == this.editedTodo)[0];
-				this.deleteTodo(todo);
-				this.editedTodo = null;
-			} else {
-				this.editedTodo = null;
-			}
+
+			this.$nextTick(() => {
+				this.$refs.edit[0].focus();
+			});
 		},
 		deleteTodo(todo) {
-			this.todos = this.todos.filter((item) => item != todo);
+			this.todos = this.filteredTodo.filter((item) => item !== todo);
 		},
-		filteredTodo(filtre) {
-			this.filtre = filtre;
+		doneEdit(todo) {
+			if (todo.title == '') {
+				this.deleteTodo(todo);
+			}
+
+			this.editedTodo = null;
 		},
-		toggleCompleted() {
-			const array = this.todos.filter((item) => !item.completed);
-			console.log(array);
+		cancelEdit(todo) {
+			const selectedTodo = this.todos.filter((item) => item == todo)[0];
+
+			if (!selectedTodo) return;
+
+			selectedTodo.title = this.editedTodo.title;
+			this.editedTodo = null;
 		},
 		clearCompleted() {
 			this.todos = this.todos.filter((item) => !item.completed);
 		},
-		isDuplicate() {
-			return this.todos.filter((item) => item.text == this.writeTodo).length > 0;
-		},
-		clearInput() {
-			this.writeTodo = '';
-		},
 	},
 	computed: {
-		nbTodos() {
+		filteredTodo() {
+			return filters[this.visibility](this.todos);
+		},
+		remaining() {
 			return this.todos.filter((item) => !item.completed).length;
 		},
 		isCompleted() {
-			return this.todos.filter((item) => item.completed).length;
+			return (
+				this.filteredTodo.filter((item) => !item.completed).length !==
+				this.filteredTodo.length
+			);
 		},
-		data() {
-			if (this.filtre == 'completed') {
-				return this.todos.filter((item) => item.completed);
-			} else if (this.filtre == 'active') {
-				return this.todos.filter((item) => !item.completed);
-			} else {
-				return this.todos;
-			}
-		},
-		allDone: {
+		allCompleted: {
 			get() {
-				return this.nbTodos == 0;
+				const allCompleted =
+					this.filteredTodo.filter((item) => !item.completed).length == 0;
+
+				if (allCompleted && this.filteredTodo.length > 0) {
+					return true;
+				} else {
+					return false;
+				}
 			},
 			set(value) {
-				this.todos.forEach((todo) => {
+				this.filteredTodo.forEach((todo) => {
 					todo.completed = value;
 				});
 			},
 		},
 	},
-	directives: {
-		todoFocus(el, value) {
-			Vue.nextTick((_) => {
-				if (value) el.focus();
-			});
-		},
-	},
 };
 </script>
 
-<style src="./style.css">
+<style src="./style.scss" lang="scss">
 </style>
