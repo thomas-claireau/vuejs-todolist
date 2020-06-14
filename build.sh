@@ -5,3 +5,4 @@ set -x
 cd ~/app.thomas-claireau.fr/vuejs-todolist/
 source ~/.bashrc
 npm install
+npm run dev
